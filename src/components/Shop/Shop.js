@@ -1,31 +1,61 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import fakeData from '../../fakeData'; 
 import {useState} from 'react'
 import './Shop.css';
 import Product from '../product/Product'
 import Cart from '../cart/Cart'
+import { addToDatabaseCart, getDatabaseCart } from '../../utilities/databaseManager';
+import { Link } from 'react-router-dom';
 
 const Shop = () => { 
     const first10=fakeData.slice(0,10) 
     const [data, setData] = useState(first10); 
     const [cart,setCart]=useState([])
+
+    useEffect(()=>{
+        const savedCart=getDatabaseCart(); 
+        const productKey=Object.keys(savedCart)
+        const previousProduct=productKey.map(existingKey=>{
+            const product=fakeData.find(pd=>pd.key===existingKey); 
+            product.quantity=savedCart[existingKey]
+            return product;
+        }) 
+        setCart(previousProduct)
+    },[])
+
+
     const handleAddProduct=(product)=>{ 
-        const newCart=[...cart,product]; 
+        const toBeAdded=product.key;
+        const sameProduct=cart.find(pd=>pd.key===product.key)
+        let count=1;
+        let newCart;
+        if(sameProduct){
+            count=sameProduct.quantity+1;
+            sameProduct.quantity=count;
+            const others=cart.filter(pd => pd.key !== toBeAdded)
+
+            newCart=[...others, sameProduct];
+        }else{
+            product.quantity=1;
+            newCart=[...cart,product]
+        }
         setCart(newCart); 
-        const totalPrice=cart.reduce((total,prod)=>total+prod.price,0)
-        console.log(totalPrice);
-    
+
+        addToDatabaseCart(product.key,count); 
     }
 
     return (
-        <div className="shop-container">
+        <div className="twin-container">
             <div className="product-container">
                 {
-                    data.map(pro=><Product handleAddProduct={handleAddProduct} pro={pro}></Product>)
+                    data.map(pro=><Product showAddToCart={true} key={pro.key} handleAddProduct={handleAddProduct} pro={pro}></Product>)
                 }
             </div>
             <div className="cart-container"> 
-                <Cart cart={cart}></Cart>; 
+                <Cart 
+                cart={cart}>
+                    <Link to='/review'><button className='main_button'>Review Order</button></Link>
+                </Cart>; 
             </div>
         </div>
     );
